@@ -1,0 +1,209 @@
+services:
+
+########################################################################################
+###################### KEYCLOAK
+########################################################################################
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.7
+    command:
+      [
+        "start-dev",
+        "--metrics-enabled=true",
+        "--health-enabled=true",
+        "--import-realm",
+        "--verbose",
+        "--log-level=INFO",
+      ]
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+    ports:
+      - "30080:8080"
+    volumes:
+      - ./keycloak/realm.json:/opt/keycloak/data/import/realm.json
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'exec 3<>/dev/tcp/127.0.0.1/8080;echo -e "GET /realms/master/.well-known/openid-configuration HTTP/1.1\r\nhost: 127.0.0.1:8080\r\nConnection: close\r\n\r\n" >&3;grep "jwks_uri"  <&3',
+        ]
+      interval: 2s
+      timeout: 10s
+      retries: 2
+      start_period: 60s
+
+
+########################################################################################
+###################### OPAL
+########################################################################################
+
+  # When scaling the opal-server to multiple nodes and/or multiple workers, we use
+  # a *broadcast* channel to sync between all the instances of opal-server.
+  # Under the hood, this channel is implemented by encode/broadcaster (see link below).
+  # At the moment, the broadcast channel can be either: postgresdb, redis or kafka.
+  # The format of the broadcaster URI string (the one we pass to opal server as `OPAL_BROADCAST_URI`) is specified here:
+  # https://github.com/encode/broadcaster#available-backends
+  broadcast_channel:
+    image: postgres:18-alpine
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+
+  opal_server:
+    # by default we run opal-server from latest official image
+    image: permitio/opal-server:0.9.2
+    environment:
+      # the broadcast backbone uri used by opal server workers (see comments above for: broadcast_channel)
+      - OPAL_BROADCAST_URI=postgres://postgres:postgres@broadcast_channel:5432/postgres
+      # number of uvicorn workers to run inside the opal-server container
+      - UVICORN_NUM_WORKERS=4
+      # the git repo hosting our policy
+      # - if this repo is not public, you can pass an ssh key via `OPAL_POLICY_REPO_SSH_KEY`)
+      # - the repo we pass in this example is *public* and acts as an example repo with dummy rego policy
+      # - for more info, see: https://docs.opal.ac/tutorials/track_a_git_repo
+      - OPAL_POLICY_REPO_URL=https://github.com/permitio/opal-example-policy-repo
+      # in this example we will use a polling interval of 30 seconds to check for new policy updates (git commits affecting the rego policy).
+      # however, it is better to utilize a git *webhook* to trigger the server to check for changes only when the repo has new commits.
+      # for more info see: https://docs.opal.ac/tutorials/track_a_git_repo
+      - OPAL_POLICY_REPO_POLLING_INTERVAL=30
+      # configures from where the opal client should initially fetch data (when it first goes up, after disconnection, etc).
+      # the data sources represents from where the opal clients should get a "complete picture" of the data they need.
+      # after the initial sources are fetched, the client will subscribe only to update notifications sent by the server.
+      - OPAL_DATA_CONFIG_SOURCES={"config":{"entries":[{"url":"http://opal_server:7002/policy-data","topics":["policy_data"],"dst_path":"/static"}]}}
+      - OPAL_LOG_FORMAT_INCLUDE_PID=true
+    ports:
+      # exposes opal server on the host machine, you can access the server at: http://localhost:7002
+      - "7002:7002"
+    depends_on:
+      - broadcast_channel
+
+  opal_client:
+    # by default we run opal-client from latest official image
+    image: permitio/opal-client:0.9.2
+    # this command is not necessary when deploying OPAL for real, it is simply a trick for dev environments
+    # to make sure that opal-server is already up before starting the client.
+    command: sh -c "exec ./wait-for.sh opal_server:7002 --timeout=20 -- ./start.sh"
+    environment:
+      - OPAL_SERVER_URL=http://opal_server:7002
+      - OPAL_LOG_FORMAT_INCLUDE_PID=true
+      - OPAL_INLINE_OPA_LOG_FORMAT=http
+    ports:
+      # exposes opal client on the host machine, you can access the client at: http://localhost:7766
+      - "7766:7000"
+      # exposes the OPA agent (being run by OPAL) on the host machine
+      # you can access the OPA api that you know and love at: http://localhost:8181
+      # OPA api docs are at: https://www.openpolicyagent.org/docs/latest/rest-api/
+      - "8181:8181"
+    depends_on:
+      - opal_server
+
+########################################################################################
+###################### TRINO
+########################################################################################
+
+  trino:
+    image: trinodb/trino:479
+    volumes:
+      - ./trino/access-control.properties:/etc/trino/access-control.properties
+      - ./trino/config.properties:/etc/trino/config.properties
+      - ./trino/log.properties:/etc/trino/log.properties
+    healthcheck:
+      test: ["CMD", "curl", "-I", "http://localhost:8080/v1/status"]
+      interval: 2s
+      timeout: 10s
+      retries: 2
+      start_period: 10s
+    depends_on:
+      - keycloak
+
+  # Emulates a reverse proxy that secures the connection to the server.
+  # This is required as trino requires HTTPS in OAUTH2 settings (rightfully so!)
+  trino_proxy:
+    image: nginx:1.29.4
+    ports:
+      - 443:443
+      - 38191:38191
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./certs:/etc/nginx/certs
+    depends_on:
+      - trino
+
+########################################################################################
+###################### SUPERSET
+########################################################################################
+
+  superset_db:
+    image: postgres:18-alpine
+    env_file:
+      - path: ./superset/.env
+        required: true
+    volumes:
+      - superset_db_home:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  superset-init:
+    # image: apache/superset:6.0.0-dev
+    build:
+      context: .
+      dockerfile: ./superset/Dockerfile
+    command: ["/app/docker/docker-init.sh"]
+    environment:
+      # Override DB connection for light service
+      DATABASE_HOST: superset_db
+      DATABASE_DB: superset
+      POSTGRES_DB: superset
+      SUPERSET_LOAD_EXAMPLES: no
+      # Use light-specific config that disables Redis
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config_docker_light.py
+    env_file:
+      - path: ./superset/.env
+        required: true
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py
+      - ./superset/superset_config_docker_light.py:/app/pythonpath/superset_config_docker_light.py
+      - superset_home:/app/superset_home
+    depends_on:
+      superset_db:
+        condition: service_started
+    healthcheck:
+      disable: true
+
+  superset:
+    # image: apache/superset:6.0.0-dev
+    build:
+      context: .
+      dockerfile: ./superset/Dockerfile
+    command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
+    environment:
+      # Override DB connection for light service
+      DATABASE_HOST: superset_db
+      DATABASE_DB: superset
+      POSTGRES_DB: superset
+      # Use light-specific config that disables Redis
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config_docker_light.py
+    env_file:
+      - path: ./superset/.env
+        required: true
+    ports:
+      - 8088:8088
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py
+      - ./superset/superset_config_docker_light.py:/app/pythonpath/superset_config_docker_light.py
+      - superset_home:/app/superset_home
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  superset_home:
+    external: false
+  superset_db_home:
+    external: false
+
+networks:
+  default:
+    name: authz_net
