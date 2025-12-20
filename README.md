@@ -1,8 +1,16 @@
 # Keycloak - Trino - Opal - Postgres
 
-## INFO
-The following additional sites are available:
+## Prep
 
+* Have `mkcert` installed
+* Copy the mkcert root ca to `./certs/rootca.crt`
+    * `cp "$(mkcert -CAROOT)/rootCa.pem" ./certs/rootca.crt`
+* Create client cert and key for use in nginx and copy output to `./certs/nginx.crt` and `./certs/nginx.key`
+    * `mkcert trino_proxy localhost 127.0.0.1`
+
+## Keycloak + Trino
+
+The following URLs are available:
 * Trino UI: [https://localhost/ui/](https://localhost/ui/)
 * Keycloak UI: [http://localhost:30080](http://localhost:30080)
 
@@ -22,8 +30,20 @@ The Keycloak Realm "authz" is pre-configured.
 
 ## Superset
 
+The following URLs are available:
+
+* Superset UI: [http://localhost:8088](http://localhost:8088)
+
 Changes to make Oauth2 (Keycloak) work:
 * Create custom image with Appbuilder for oauth2
 * Add `superset_config.py` and `superset_config_docker_light` to include oauth2 config
+    * Make sure the `client_id` is the same as the oauth2 client used in Trino
+    * Make sure the `trino` scope configured on the trino client in Keycloak is also included
 * Create `superset` client in Keycloak
 * Set Frontend URL of Keycloak Realm to `http://localhost:30080`
+
+### Connection to Trino using GUI
+
+* URI: `trino://trino_proxy:443/system`
+* Check `Impersonate user ..`
+* Engine: `{"connect_args":{"http_scheme":"https","verify":false}}`

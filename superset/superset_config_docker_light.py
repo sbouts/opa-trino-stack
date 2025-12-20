@@ -17,10 +17,21 @@
 #
 # Configuration for docker-compose-light.yml - disables Redis and uses minimal services
 
+import os
+import logging
+
+from typing import Any
+from datetime import timedelta
+
 # Import all settings from the main config first
 from flask_caching.backends.filesystemcache import FileSystemCache
 from flask_appbuilder.security.manager import AUTH_OAUTH
 from superset_config import *  # noqa: F403
+
+log_level = os.environ.get("SUPERSET_LOG_LEVEL", "INFO")
+logging.basicConfig(level=log_level)
+# logging.getLogger('trino.client').setLevel(logging.DEBUG)
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 
 # Override caching to use simple in-memory cache instead of Redis
 RESULTS_BACKEND = FileSystemCache("/app/superset_home/sqllab")
@@ -38,7 +49,8 @@ THUMBNAIL_CACHE_CONFIG = CACHE_CONFIG
 CELERY_CONFIG = None  # type: ignore[assignment,misc]
 
 
-# OAUTH2 INTEGRATION
+##### OAUTH2 INTEGRATION
+
 # Enable OAuth authentication
 AUTH_TYPE = AUTH_OAUTH
 LOGOUT_REDIRECT_URL='http://keycloak:8080/realms/authz/protocol/openid-connect/logout'
@@ -65,3 +77,37 @@ OAUTH_PROVIDERS = [
         },
     }
 ]
+
+
+#### OAUTH2 DATABSE (TRINO)
+
+# Details needed for databases that allows user to authenticate using personal OAuth2
+# tokens. See https://github.com/apache/superset/issues/20300 for more information. The
+# scope and URIs are usually optional.
+# NOTE that if you change the id, scope, or URIs in this file, you probably need to purge  # noqa: E501
+# the existing tokens from the database. This needs to be done by running a query to
+# delete the existing tokens.
+# https://github.com/apache/superset/pull/30081
+DATABASE_OAUTH2_CLIENTS: dict[str, dict[str, Any]] = {
+    'Trino': {
+        'id': 'trino',
+        'secret': 'trinosupersecret',
+        'scope': 'openid profile email trino',
+        'authorization_request_uri': 'http://localhost:30080/realms/authz/protocol/openid-connect/auth',
+        'token_request_uri': 'http://keycloak:8080/realms/authz/protocol/openid-connect/token',
+        'request_content_type': 'data' # keycloak doesn't accept application/json body.
+    }
+}
+
+# OAuth2 state is encoded in a JWT using the alogorithm below.
+DATABASE_OAUTH2_JWT_ALGORITHM = "HS256"
+
+# By default the redirect URI points to /api/v1/database/oauth2/ and doesn't have to be
+# specified. If you're running multiple Superset instances you might want to have a
+# proxy handling the redirects, since redirect URIs need to be registered in the OAuth2
+# applications. In that case, the proxy can forward the request to the correct instance
+# by looking at the `default_redirect_uri` attribute in the OAuth2 state object.
+DATABASE_OAUTH2_REDIRECT_URI = "http://localhost:8088/api/v1/database/oauth2/"
+
+# Timeout when fetching access and refresh tokens.
+DATABASE_OAUTH2_TIMEOUT = timedelta(seconds=30)

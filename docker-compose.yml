@@ -106,7 +106,7 @@ services:
   trino:
     image: trinodb/trino:479
     volumes:
-      - ./trino/access-control.properties:/etc/trino/access-control.properties
+      # - ./trino/access-control.properties:/etc/trino/access-control.properties
       - ./trino/config.properties:/etc/trino/config.properties
       - ./trino/log.properties:/etc/trino/log.properties
     healthcheck:
@@ -184,6 +184,7 @@ services:
       POSTGRES_DB: superset
       # Use light-specific config that disables Redis
       SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config_docker_light.py
+      SUPERSET_LOG_LEVEL: INFO
     env_file:
       - path: ./superset/.env
         required: true
