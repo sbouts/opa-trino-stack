@@ -28,9 +28,8 @@ from flask_caching.backends.filesystemcache import FileSystemCache
 from flask_appbuilder.security.manager import AUTH_OAUTH
 from superset_config import *  # noqa: F403
 
-log_level_str = os.environ.get("SUPERSET_LOG_LEVEL", "INFO")
-log_level = getattr(logging, log_level_str.upper(), logging.INFO)
-logging.basicConfig(level=log_level)
+
+##### DEBUG LOGGING
 # logging.getLogger('trino.client').setLevel(logging.DEBUG)
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 

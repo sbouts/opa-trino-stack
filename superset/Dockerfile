@@ -6,6 +6,7 @@ USER root
 
 COPY ../certs/rootca.crt /usr/local/share/ca-certificates
 RUN update-ca-certificates
+# Otherwise we get sqlalchemy SSL errors
 ENV REQUESTS_CA_BUNDLE='/usr/local/share/ca-certificates/rootca.crt'
 
 RUN uv pip install --no-cache-dir Flask-OAuthlib Authlib trino[sqlalchemy]
