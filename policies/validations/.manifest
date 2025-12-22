@@ -1,0 +1,4 @@
+catalog.rego
+schema.rego
+table.rego
+column.rego
