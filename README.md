@@ -52,3 +52,17 @@ Changes to make Oauth2 (Keycloak) work:
 * URI: `trino://trino_proxy:443/system`
 * Check `Impersonate user ..`
 * Engine: `{"connect_args":{"http_scheme":"https","verify":false}}`
+
+## OPAL
+
+```shell
+# check opa data
+curl -s -XGET -H 'Content-Type: application/json' 'http://localhost:8181/v1/data' | jq .
+```
+
+### Links
+
+* [OPAL config reference](https://opal.ac/getting-started/configuration)
+* [OPAL policies example](https://github.com/permitio/opal-example-policy-repo/tree/master)
+* [Trino OPA example](https://github.com/nil1729/trino-opa-demo)
+* [Trino Request Input examples](https://github.com/lakekeeper/lakekeeper/tree/main/authz/opa-bridge/inputs)

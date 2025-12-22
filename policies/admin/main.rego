@@ -9,5 +9,6 @@ allow_admin if {
 
 # validate if user is admin
 user_is_admin if {
-	context.user_id == "admin"
+	# context.user_id == "admin"
+	input.context.identity.user == "superman"
 }
