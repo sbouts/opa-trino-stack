@@ -1,5 +1,10 @@
 # Keycloak - Trino - Opal - Postgres
 
+## TODO
+
+* Limit access of regularman to trino's builtin `tpch/tiny` schema only using OPA
+* Add postgres database (with mock data)
+
 ## Prep
 
 * Have `mkcert` installed
