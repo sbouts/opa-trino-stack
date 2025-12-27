@@ -50,6 +50,12 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      start_period: 15s
+      timeout: 10s
+      retries: 3
 
   opal_server:
     # by default we run opal-server from latest official image
@@ -79,7 +85,8 @@ services:
       # exposes opal server on the host machine, you can access the server at: http://localhost:7002
       - "7002:7002"
     depends_on:
-      - broadcast_channel
+      broadcast_channel:
+        condition: service_healthy
 
   opal_client:
     # by default we run opal-client from latest official image
@@ -202,6 +209,44 @@ services:
       superset-init:
         condition: service_completed_successfully
     restart: unless-stopped
+
+########################################################################################
+###################### RBAC-SERVER
+########################################################################################
+
+  rbac_db:
+    image: postgres:18-alpine
+    environment:
+      - POSTGRES_DB=rbac
+      - POSTGRES_USER=rbac
+      - POSTGRES_PASSWORD=rbacpass
+    # local dev
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "rbac"]
+      interval: 10s
+      start_period: 15s
+      timeout: 10s
+      retries: 3
+
+  rbac_backend:
+    build:
+      context: "${PWD}/rbac-server"
+      dockerfile: Dockerfile
+      args:
+        PORT: 5050
+    ports:
+      - "5050:5050"
+    environment:
+      - RBAC_STORE_USER=rbac
+      - RBAC_STORE_PASSWORD=rbacpass
+      - RBAC_STORE_HOST=rbac_db
+      - RBAC_STORE_PORT=5432
+      - RBAC_STORE_DB=rbac
+    depends_on:
+      rbac_db:
+        condition: service_healthy
 
 volumes:
   superset_home:
