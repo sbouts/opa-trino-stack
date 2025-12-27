@@ -55,14 +55,24 @@ Changes to make Oauth2 (Keycloak) work:
 
 ## OPAL
 
+### TODO
+
+* Get request from superman working (is_admin = true)
+* Get data from e.g. Keycloak
+
 ```shell
+# check opa policies
+curl -s -XGET -H 'Content-Type: application/json' 'http://localhost:8181/v1/policies' | jq .
+
 # check opa data
 curl -s -XGET -H 'Content-Type: application/json' 'http://localhost:8181/v1/data' | jq .
 ```
 
 ### Links
 
+* [OPA Api Reference](https://www.openpolicyagent.org/docs/rest-api)
 * [OPAL config reference](https://opal.ac/getting-started/configuration)
 * [OPAL policies example](https://github.com/permitio/opal-example-policy-repo/tree/master)
 * [Trino OPA example](https://github.com/nil1729/trino-opa-demo)
 * [Trino Request Input examples](https://github.com/lakekeeper/lakekeeper/tree/main/authz/opa-bridge/inputs)
+* [Make external requests example](https://github.com/lakekeeper/lakekeeper/blob/main/authz/opa-bridge/policies/lakekeeper/authentication.rego)
