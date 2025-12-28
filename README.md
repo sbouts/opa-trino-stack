@@ -91,7 +91,8 @@ curl -s -XGET -H 'Content-Type: application/json' 'http://localhost:8181/v1/data
 curl -XPOST 'http://localhost:5050/api/v1/users' -H "Content-Type: application/json" \
 --data-raw '{
     "name": "regularman",
-    "email": "regular@man.org"
+    "email": "regular@man.org",
+    "is_admin": false
 }'
 
 # get user

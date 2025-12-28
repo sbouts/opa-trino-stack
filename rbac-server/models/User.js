@@ -13,6 +13,12 @@ const User = RbacStore.client.define(
       allowNull: false,
       unique: true,
     },
+    isAdmin: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+      field: "is_admin",
+    },
     userId: {
       type: DataTypes.INTEGER,
       allowNull: false,

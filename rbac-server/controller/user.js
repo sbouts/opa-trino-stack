@@ -12,6 +12,7 @@ exports.createUser = asyncHandler(async (req, res) => {
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
+    isAdmin: req.body.is_admin || false
   });
   res.status(201).json(user);
 });
