@@ -79,7 +79,8 @@ services:
       # configures from where the opal client should initially fetch data (when it first goes up, after disconnection, etc).
       # the data sources represents from where the opal clients should get a "complete picture" of the data they need.
       # after the initial sources are fetched, the client will subscribe only to update notifications sent by the server.
-      - OPAL_DATA_CONFIG_SOURCES={"config":{"entries":[{"url":"http://opal_server:7002/policy-data","topics":["policy_data"],"dst_path":"/static"}]}}
+      # dst_path = json path where data is served
+      - OPAL_DATA_CONFIG_SOURCES={"config":{"entries":[{"url":"http://rbac_backend:5050/api/v1/opal/users/1","topics":["trino-users-1"],"dst_path":"/external","periodic_update_interval":5}]}}
       - OPAL_LOG_FORMAT_INCLUDE_PID=true
     ports:
       # exposes opal server on the host machine, you can access the server at: http://localhost:7002
@@ -98,6 +99,8 @@ services:
     command: sh -c "exec ./wait-for.sh opal_server:7002 --timeout=20 -- ./start.sh"
     environment:
       - OPAL_SERVER_URL=http://opal_server:7002
+      # same name as the topic defined in OPAL_DATA_CONFIG_SOURCES on opal_server
+      - OPAL_DATA_TOPICS=trino-users-1
       - OPAL_LOG_FORMAT_INCLUDE_PID=true
       - OPAL_INLINE_OPA_LOG_FORMAT=http
     ports:
