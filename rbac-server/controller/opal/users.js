@@ -18,8 +18,15 @@ exports.getUserPolicies = asyncHandler(async (req, res) => {
   const columnAccess = [];
 
   for (const user of users) {
-    const groups = await user.getGroups();
     const policies = [];
+
+    // users
+    const userPolicies = await user.getPolicies({ where: { clusterId } });
+    policies.push(...userPolicies);
+    console.log(userPolicies.length);
+
+    // groups
+    const groups = await user.getGroups();
     for (const group of groups) {
       const groupPolicies = await group.getPolicies({ where: { clusterId } });
       policies.push(...groupPolicies);
@@ -27,11 +34,11 @@ exports.getUserPolicies = asyncHandler(async (req, res) => {
     if (policies.length === 0) {
       continue;
     } else {
-      opaUsers.push(user.email);
-      catalogAccess.push(createCatalogAccess(policies, "user", user.email));
-      schemaAccess.push(createSchemaAccess(policies, "user", user.email));
-      tableAccess.push(createTableAccess(policies, "user", user.email));
-      columnAccess.push(createColumnAccess(policies, "user", user.email));
+      opaUsers.push(user.name);
+      catalogAccess.push(createCatalogAccess(policies, "user", user.name));
+      schemaAccess.push(createSchemaAccess(policies, "user", user.name));
+      tableAccess.push(createTableAccess(policies, "user", user.name));
+      columnAccess.push(createColumnAccess(policies, "user", user.name));
     }
   }
 

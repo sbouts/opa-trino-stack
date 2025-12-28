@@ -20,6 +20,7 @@ router.get("/policies", policyController.getPolicies);
 router.post("/group-policies", groupPolicyController.associatePolicyWithGroup);
 router.get("/group-policies/:groupId", groupPolicyController.getPoliciesByGroup);
 router.get("/user-policies/:userId", userPolicyController.getPoliciesByUser);
+router.post("/user-policies", userPolicyController.associatePolicyWithUser);
 router.get("/opal/users/:clusterId", opalController.getUserPolicies);
 router.get("/opal/groups/:clusterId", opalController.getGroupPolicies);
 
