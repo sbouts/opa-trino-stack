@@ -57,8 +57,17 @@ Changes to make Oauth2 (Keycloak) work:
 
 ### TODO
 
-* Get request from superman working (is_admin = true)
-* Get data from e.g. Keycloak
+* Get data from e.g. Keycloak??
+    * Create RBAC API
+
+### OPAL Server
+
+```shell
+# get all policy-data
+curl http://localhost:7002/policy-data
+```
+
+### OPAL Client (OPA)
 
 ```shell
 # check opa policies
@@ -66,6 +75,74 @@ curl -s -XGET -H 'Content-Type: application/json' 'http://localhost:8181/v1/poli
 
 # check opa data
 curl -s -XGET -H 'Content-Type: application/json' 'http://localhost:8181/v1/data' | jq .
+```
+
+# RBAC Server
+
+## TODO
+
+* Assign policies to user not just groups
+* Remove group option because we only want to have user-policy mapping?
+
+## Init
+
+```shell
+# create user
+curl -XPOST 'http://localhost:5050/api/v1/users' -H "Content-Type: application/json" \
+--data-raw '{
+    "name": "regularman",
+    "email": "regular@man.org"
+}'
+
+# get user
+curl 'http://localhost:5050/api/v1/users' -H "Content-Type: application/json"
+
+# create policies
+# 1
+curl -XPOST 'http://localhost:5050/api/v1/policies' -H "Content-Type: application/json" \
+--data '{
+    "clusterId": 1,
+    "name": "policy1",
+    "catalog": "tpch",
+    "schema": "sf1",
+    "table": "customer",
+    "columns": ["custkey", "nationkey"]
+}'
+
+# 2
+curl -XPOST 'http://localhost:5050/api/v1/policies' -H "Content-Type: application/json" \
+--data '{
+    "clusterId": 1,
+    "name": "policy2",
+    "catalog": "tpch",
+    "schema": "tiny",
+    "table": "*",
+    "columns": ["*"]
+}'
+
+# get policy
+curl 'http://localhost:5050/api/v1/policies' -H "Content-Type: application/json"
+
+# assign policies to user
+# 1
+curl -XPOST 'http://localhost:5050/api/v1/user-policies' -H "Content-Type: application/json" \
+--data '{
+    "userId": 1,
+    "policyId": 1
+}'
+
+# 2
+curl -XPOST 'http://localhost:5050/api/v1/user-policies' -H "Content-Type: application/json" \
+--data '{
+    "userId": 1,
+    "policyId": 2
+}'
+
+# get policies for user
+curl 'http://localhost:5050/api/v1/user-policies/1' -H "Content-Type: application/json"
+
+# get opal formatted policies
+curl 'http://localhost:5050/api/v1/opal/users/1' -H "Content-Type: application/json"
 ```
 
 ### Links
