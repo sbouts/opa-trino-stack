@@ -34,7 +34,7 @@ exports.getUserPolicies = asyncHandler(async (req, res) => {
     if (policies.length === 0) {
       continue;
     } else {
-      opaUsers.push({ [user.name]: { "is_admin": false } });
+      opaUsers.push({ [user.name]: { "is_admin": user.isAdmin } });
       catalogAccess.push(createCatalogAccess(policies, "user", user.name));
       schemaAccess.push(createSchemaAccess(policies, "user", user.name));
       tableAccess.push(createTableAccess(policies, "user", user.name));
